@@ -1,0 +1,20 @@
+# Symplora Leave Management System - Environment Configuration
+
+# Database Configuration
+# DATABASE_URL='postgresql://neondb_owner:npg_8kswCuc9Rqey@ep-lively-bird-a1g6bbs2-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+DATABASE_URL='postgresql://neondb_owner:npg_8kswCuc9Rqey@ep-lively-bird-a1g6bbs2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require'
+
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# Security
+JWT_SECRET=symplora-leave-management-super-secret-key-2024
+BCRYPT_ROUNDS=10
+
+# API Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Cors Configuration
+CORS_ORIGIN=http://localhost:5173,http://localhost:5174

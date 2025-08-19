@@ -15,7 +15,9 @@ class PostgresDatabase {
     this.pool = new Pool({
       connectionString: connectionString,
       ssl: {
-        rejectUnauthorized: false
+        rejectUnauthorized: true,
+        sslmode: 'require',
+        ssl: true
       },
       max: 20, // Maximum number of clients in the pool
       idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
@@ -45,17 +47,22 @@ class PostgresDatabase {
         )
       `);
 
-      // Create leave requests table
+      // Drop existing leave_requests table if it exists
+      await client.query(`
+        DROP TABLE IF EXISTS leave_requests CASCADE;
+      `);
+
+      // Create leave requests table with updated constraints
       await client.query(`
         CREATE TABLE IF NOT EXISTS leave_requests (
           id SERIAL PRIMARY KEY,
           employee_id INTEGER NOT NULL REFERENCES employees(id),
-          leave_type VARCHAR(20) NOT NULL CHECK (leave_type IN ('annual', 'sick', 'emergency')),
+          leave_type VARCHAR(20) NOT NULL CHECK (leave_type IN ('Annual', 'Sick', 'Unpaid')),
           start_date DATE NOT NULL,
           end_date DATE NOT NULL,
           days_requested INTEGER NOT NULL,
           reason TEXT,
-          status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled')),
+          status VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
           approved_by INTEGER REFERENCES employees(id),
           approved_at TIMESTAMP,
           comments TEXT,
@@ -102,18 +109,18 @@ class PostgresDatabase {
     
     if (parseInt(result.rows[0].count) === 0) {
       const defaultPolicies = [
-        { department: 'Engineering', leave_type: 'annual', annual_entitlement: 24, max_consecutive_days: 10, min_notice_days: 7 },
-        { department: 'Engineering', leave_type: 'sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
-        { department: 'HR', leave_type: 'annual', annual_entitlement: 26, max_consecutive_days: 15, min_notice_days: 7 },
-        { department: 'HR', leave_type: 'sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
-        { department: 'Finance', leave_type: 'annual', annual_entitlement: 24, max_consecutive_days: 10, min_notice_days: 7 },
-        { department: 'Finance', leave_type: 'sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
-        { department: 'Marketing', leave_type: 'annual', annual_entitlement: 22, max_consecutive_days: 10, min_notice_days: 5 },
-        { department: 'Marketing', leave_type: 'sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
-        { department: 'Sales', leave_type: 'annual', annual_entitlement: 22, max_consecutive_days: 10, min_notice_days: 5 },
-        { department: 'Sales', leave_type: 'sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
-        { department: 'Operations', leave_type: 'annual', annual_entitlement: 24, max_consecutive_days: 10, min_notice_days: 7 },
-        { department: 'Operations', leave_type: 'sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 }
+        { department: 'Engineering', leave_type: 'Annual', annual_entitlement: 24, max_consecutive_days: 10, min_notice_days: 7 },
+        { department: 'Engineering', leave_type: 'Sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
+        { department: 'HR', leave_type: 'Annual', annual_entitlement: 26, max_consecutive_days: 15, min_notice_days: 7 },
+        { department: 'HR', leave_type: 'Sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
+        { department: 'Finance', leave_type: 'Annual', annual_entitlement: 24, max_consecutive_days: 10, min_notice_days: 7 },
+        { department: 'Finance', leave_type: 'Sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
+        { department: 'Marketing', leave_type: 'Annual', annual_entitlement: 22, max_consecutive_days: 10, min_notice_days: 5 },
+        { department: 'Marketing', leave_type: 'Sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
+        { department: 'Sales', leave_type: 'Annual', annual_entitlement: 22, max_consecutive_days: 10, min_notice_days: 5 },
+        { department: 'Sales', leave_type: 'Sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 },
+        { department: 'Operations', leave_type: 'Annual', annual_entitlement: 24, max_consecutive_days: 10, min_notice_days: 7 },
+        { department: 'Operations', leave_type: 'Sick', annual_entitlement: 12, max_consecutive_days: 5, min_notice_days: 0 }
       ];
 
       const insertPolicy = `

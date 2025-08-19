@@ -500,6 +500,12 @@ const EmployeeManagement = ({ employees, onAddEmployee, onLoadDemo }) => {
 };
 
 // Leave Management Component  
+// Helper function to format date to DD/MM/YYYY
+const formatDate = (date) => {
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+};
+
 const LeaveManagement = ({ employees, leaveRequests, onSubmitLeave, onApproveReject }) => {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -510,7 +516,15 @@ const LeaveManagement = ({ employees, leaveRequests, onSubmitLeave, onApproveRej
   const handleSubmit = async () => {
     try {
       setError('');
-      await onSubmitLeave(formData);
+      // Format dates to DD/MM/YYYY and capitalize leave type
+      const formattedData = {
+        ...formData,
+        leave_type: formData.leave_type === 'annual' ? 'Annual' : 
+                   formData.leave_type === 'sick' ? 'Sick' : 'Unpaid',
+        start_date: formatDate(formData.start_date),
+        end_date: formatDate(formData.end_date)
+      };
+      await onSubmitLeave(formattedData);
       setOpen(false);
       setFormData({ employee_id: '', leave_type: '', start_date: '', end_date: '', reason: '' });
     } catch (err) {
@@ -664,7 +678,7 @@ const LeaveManagement = ({ employees, leaveRequests, onSubmitLeave, onApproveRej
                 >
                   <MenuItem value="annual">Annual Leave</MenuItem>
                   <MenuItem value="sick">Sick Leave</MenuItem>
-                  <MenuItem value="emergency">Emergency Leave</MenuItem>
+                  <MenuItem value="unpaid">Unpaid Leave</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
