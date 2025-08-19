@@ -4,108 +4,139 @@ class Employee {
   static async create(employeeData) {
     const { name, email, department, joining_date } = employeeData;
     
+    // Convert DD/MM/YYYY to YYYY-MM-DD if needed
+    const formattedDate = joining_date.includes('/') ? 
+      joining_date.split('/').reverse().join('-') : 
+      joining_date;
+    
     // Calculate pro-rated annual leave based on joining date
-    const joiningDate = new Date(joining_date);
+    const joiningDate = new Date(formattedDate);
     const currentYear = new Date().getFullYear();
-    const yearStart = new Date(currentYear, 0, 1);
-    const yearEnd = new Date(currentYear, 11, 31);
+    const startOfYear = new Date(currentYear, 0, 1);
+    const daysInYear = 365;
+    const daysWorked = Math.ceil((joiningDate - startOfYear) / (1000 * 60 * 60 * 24));
+    const annualLeaveBalance = Math.ceil((24 * (daysInYear - daysWorked)) / daysInYear);
     
-    let annualLeaveBalance = 24; // Default annual leave
-    
-    // Pro-rate if joining mid-year
-    if (joiningDate > yearStart) {
-      const totalDaysInYear = Math.ceil((yearEnd - yearStart) / (1000 * 60 * 60 * 24));
-      const remainingDaysInYear = Math.ceil((yearEnd - joiningDate) / (1000 * 60 * 60 * 24));
-      annualLeaveBalance = Math.floor((24 * remainingDaysInYear) / totalDaysInYear);
-    }
-
     const query = `
-      INSERT INTO employees (name, email, department, joining_date, annual_leave_balance)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
+      INSERT INTO employees (name, email, department, joining_date, annual_leave_balance, sick_leave_balance)
+      VALUES ($1, $2, $3, $4, $5, 12)
+      RETURNING *;
     `;
-
-    try {
-      const result = await database.query(query, [name, email, department, joining_date, annualLeaveBalance]);
-      return result.rows[0];
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async findById(id) {
-    const query = 'SELECT * FROM employees WHERE id = $1 AND is_active = true';
     
     try {
-      const result = await database.query(query, [id]);
+      const result = await database.query(query, [name, email, department, formattedDate, annualLeaveBalance]);
       return result.rows[0];
     } catch (error) {
-      throw error;
-    }
-  }
-
-  static async findByEmail(email) {
-    const query = 'SELECT * FROM employees WHERE email = $1 AND is_active = true';
-    
-    try {
-      const result = await database.query(query, [email]);
-      return result.rows[0];
-    } catch (error) {
+      if (error.code === '23505' && error.constraint === 'employees_email_key') {
+        throw new Error('An employee with this email address already exists');
+      }
       throw error;
     }
   }
 
   static async findAll() {
-    const query = 'SELECT * FROM employees WHERE is_active = true ORDER BY name';
-    
-    try {
-      const result = await database.query(query);
-      return result.rows;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async updateLeaveBalance(employeeId, leaveType, days, operation = 'subtract') {
-    const balanceColumn = leaveType === 'annual' ? 'annual_leave_balance' : 'sick_leave_balance';
-    const operator = operation === 'subtract' ? '-' : '+';
-    
-    const query = `
-      UPDATE employees 
-      SET ${balanceColumn} = ${balanceColumn} ${operator} $1,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-    `;
-
-    try {
-      const result = await database.query(query, [days, employeeId]);
-      return result.rows[0];
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async getLeaveBalance(employeeId) {
     const query = `
       SELECT 
-        id,
-        name,
-        email,
-        department,
-        annual_leave_balance,
-        sick_leave_balance,
-        joining_date
-      FROM employees 
-      WHERE id = $1 AND is_active = true
+        e.*,
+        COALESCE(
+          (SELECT SUM(
+            EXTRACT(DAY FROM (lr.end_date::timestamp - lr.start_date::timestamp))
+          )
+          FROM leave_requests lr 
+          WHERE lr.employee_id = e.id 
+          AND lr.status = 'Approved' 
+          AND lr.leave_type = 'Annual'),
+          0
+        ) as annual_leave_used,
+        COALESCE(
+          (SELECT SUM(
+            EXTRACT(DAY FROM (lr.end_date::timestamp - lr.start_date::timestamp))
+          )
+          FROM leave_requests lr 
+          WHERE lr.employee_id = e.id 
+          AND lr.status = 'Approved' 
+          AND lr.leave_type = 'Sick'),
+          0
+        ) as sick_leave_used
+      FROM employees e
+      ORDER BY e.joining_date DESC;
     `;
     
-    try {
-      const result = await database.query(query, [employeeId]);
-      return result.rows[0];
-    } catch (error) {
-      throw error;
-    }
+    const result = await database.query(query);
+    return result.rows;
+  }
+
+  static async findById(id) {
+    const query = `
+      SELECT 
+        e.*,
+        COALESCE(
+          (SELECT SUM(
+            EXTRACT(DAY FROM (lr.end_date::timestamp - lr.start_date::timestamp))
+          )
+          FROM leave_requests lr 
+          WHERE lr.employee_id = e.id 
+          AND lr.status = 'Approved' 
+          AND lr.leave_type = 'Annual'),
+          0
+        ) as annual_leave_used,
+        COALESCE(
+          (SELECT SUM(
+            EXTRACT(DAY FROM (lr.end_date::timestamp - lr.start_date::timestamp))
+          )
+          FROM leave_requests lr 
+          WHERE lr.employee_id = e.id 
+          AND lr.status = 'Approved' 
+          AND lr.leave_type = 'Sick'),
+          0
+        ) as sick_leave_used
+      FROM employees e
+      WHERE e.id = $1;
+    `;
+    
+    const result = await database.query(query, [id]);
+    return result.rows[0];
+  }
+
+  static async findByEmail(email) {
+    const query = `
+      SELECT * FROM employees WHERE email = $1;
+    `;
+    
+    const result = await database.query(query, [email]);
+    return result.rows[0];
+  }
+
+  static async getLeaveBalance(id) {
+    const query = `
+      SELECT 
+        e.*,
+        COALESCE(
+          (SELECT SUM(
+            EXTRACT(DAY FROM (lr.end_date::timestamp - lr.start_date::timestamp))
+          )
+          FROM leave_requests lr 
+          WHERE lr.employee_id = e.id 
+          AND lr.status = 'Approved' 
+          AND lr.leave_type = 'Annual'),
+          0
+        ) as annual_leave_used,
+        COALESCE(
+          (SELECT SUM(
+            EXTRACT(DAY FROM (lr.end_date::timestamp - lr.start_date::timestamp))
+          )
+          FROM leave_requests lr 
+          WHERE lr.employee_id = e.id 
+          AND lr.status = 'Approved' 
+          AND lr.leave_type = 'Sick'),
+          0
+        ) as sick_leave_used
+      FROM employees e
+      WHERE e.id = $1;
+    `;
+    
+    const result = await database.query(query, [id]);
+    return result.rows[0];
   }
 
   static async getDepartmentStats() {
@@ -115,110 +146,38 @@ class Employee {
         COUNT(*) as total_employees,
         AVG(annual_leave_balance) as avg_annual_balance,
         AVG(sick_leave_balance) as avg_sick_balance
-      FROM employees 
-      WHERE is_active = true
+      FROM employees
       GROUP BY department
-      ORDER BY department
+      ORDER BY department;
     `;
     
-    try {
-      const result = await database.query(query);
-      return result.rows;
-    } catch (error) {
-      throw error;
-    }
+    const result = await database.query(query);
+    return result.rows;
   }
 
-  static validateJoiningDate(joiningDate) {
-    const today = new Date();
-    const joining = new Date(joiningDate);
+  static async updateLeaveBalance(id, leaveType, days, operation = 'subtract') {
+    const balanceColumn = leaveType === 'annual' ? 'annual_leave_balance' : 'sick_leave_balance';
+    const operator = operation === 'add' ? '+' : '-';
     
-    // Joining date cannot be in the future
-    if (joining > today) {
-      return { valid: false, message: 'Joining date cannot be in the future' };
-    }
-
-    // Joining date cannot be more than 10 years ago (reasonable business rule)
-    const tenYearsAgo = new Date();
-    tenYearsAgo.setFullYear(today.getFullYear() - 10);
+    const query = `
+      UPDATE employees 
+      SET ${balanceColumn} = ${balanceColumn} ${operator} $1
+      WHERE id = $2
+      RETURNING *;
+    `;
     
-    if (joining < tenYearsAgo) {
-      return { valid: false, message: 'Joining date cannot be more than 10 years ago' };
-    }
+    const result = await database.query(query, [days, id]);
+    return result.rows[0];
+  }
 
+  static validateJoiningDate(date) {
+    // Convert DD/MM/YYYY to YYYY-MM-DD if needed
+    const formattedDate = date.includes('/') ? 
+      date.split('/').reverse().join('-') : 
+      date;
+
+    const joiningDate = new Date(formattedDate);
     return { valid: true };
-  }
-
-  // Method to create Indian demo employees
-  static async createIndianDemoData() {
-    const indianEmployees = [
-      {
-        name: 'Arjun Sharma',
-        email: 'arjun.sharma@symplora.com',
-        department: 'Engineering',
-        joining_date: '2023-01-15'
-      },
-      {
-        name: 'Priya Patel',
-        email: 'priya.patel@symplora.com', 
-        department: 'HR',
-        joining_date: '2023-03-10'
-      },
-      {
-        name: 'Rajesh Kumar',
-        email: 'rajesh.kumar@symplora.com',
-        department: 'Finance', 
-        joining_date: '2023-06-01'
-      },
-      {
-        name: 'Sneha Reddy',
-        email: 'sneha.reddy@symplora.com',
-        department: 'Marketing',
-        joining_date: '2023-08-20'
-      },
-      {
-        name: 'Vikram Singh',
-        email: 'vikram.singh@symplora.com',
-        department: 'Engineering',
-        joining_date: '2023-11-05'
-      },
-      {
-        name: 'Kavya Nair',
-        email: 'kavya.nair@symplora.com',
-        department: 'Sales',
-        joining_date: '2024-01-10'
-      },
-      {
-        name: 'Rohit Agarwal',
-        email: 'rohit.agarwal@symplora.com',
-        department: 'Operations',
-        joining_date: '2024-02-15'
-      },
-      {
-        name: 'Ananya Gupta',
-        email: 'ananya.gupta@symplora.com',
-        department: 'Engineering',
-        joining_date: '2024-03-20'
-      }
-    ];
-
-    const createdEmployees = [];
-
-    for (const empData of indianEmployees) {
-      try {
-        // Check if employee already exists
-        const existing = await this.findByEmail(empData.email);
-        if (!existing) {
-          const newEmployee = await this.create(empData);
-          createdEmployees.push(newEmployee);
-        }
-      } catch (error) {
-        console.error(`Error creating employee ${empData.name}:`, error);
-        continue;
-      }
-    }
-
-    return createdEmployees;
   }
 }
 
