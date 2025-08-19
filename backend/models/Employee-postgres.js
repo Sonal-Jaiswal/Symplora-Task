@@ -155,7 +155,7 @@ class Employee {
     return result.rows;
   }
 
-  static validateJoiningDate(joiningDate) {
+  static async validateJoiningDate(joiningDate) {
     const today = new Date();
     const joining = new Date(joiningDate);
     console.log(`Validating joining date: ${joining.toISOString()}`);
