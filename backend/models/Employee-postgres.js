@@ -132,18 +132,19 @@ class Employee {
   static validateJoiningDate(joiningDate) {
     const today = new Date();
     const joining = new Date(joiningDate);
-    
+    console.log(`Validating joining date: ${joining.toISOString()}`);
+
     // Joining date cannot be in the future
     if (joining > today) {
       return { valid: false, message: 'Joining date cannot be in the future' };
     }
 
-    // Joining date cannot be more than 10 years ago (reasonable business rule)
-    const tenYearsAgo = new Date();
-    tenYearsAgo.setFullYear(today.getFullYear() - 10);
-    
-    if (joining < tenYearsAgo) {
-      return { valid: false, message: 'Joining date cannot be more than 10 years ago' };
+    // Joining date cannot be more than 50 years ago (reasonable business rule)
+    const fiftyYearsAgo = new Date();
+    fiftyYearsAgo.setFullYear(today.getFullYear() - 50);
+
+    if (joining < fiftyYearsAgo) {
+      return { valid: false, message: 'Joining date cannot be more than 50 years ago' };
     }
 
     return { valid: true };

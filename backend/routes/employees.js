@@ -19,6 +19,7 @@ const {
  */
 router.post('/', sanitizeInput, validateEmployee, asyncHandler(async (req, res) => {
   const { name, email, department, joining_date } = req.body;
+  console.log('req body',req.body);
 
   // Check if employee with email already exists
   const existingEmployee = await Employee.findByEmail(email);

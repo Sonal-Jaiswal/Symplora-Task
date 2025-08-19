@@ -871,6 +871,7 @@ function App() {
   };
 
   const handleAddEmployee = async (employeeData) => {
+    console.log('Adding employee:', employeeData);
     const response = await fetch('http://localhost:3001/api/employees', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -887,6 +888,7 @@ function App() {
   };
 
   const handleSubmitLeave = async (leaveData) => {
+    console.log('Submitting leave request:', leaveData);
     const response = await fetch('http://localhost:3001/api/leave-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
