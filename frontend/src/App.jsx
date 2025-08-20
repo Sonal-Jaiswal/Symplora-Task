@@ -44,7 +44,7 @@ function App() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/employees');
+      const response = await fetch('https://symplora-task.onrender.com/api/employees');
       const data = await response.json();
       setEmployees(data.data || []);
     } catch (error) {
@@ -55,7 +55,7 @@ function App() {
 
   const fetchLeaveRequests = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/leave-requests');
+      const response = await fetch('https://symplora-task.onrender.com/api/leave-requests');
       const data = await response.json();
       setLeaveRequests(data.data || []);
     } catch (error) {
@@ -67,7 +67,7 @@ function App() {
   const handleLoadDemo = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/quick-setup');
+      const response = await fetch('https://symplora-task.onrender.com/api/quick-setup');
       const data = await response.json();
       setSnackbar({ open: true, message: 'Indian demo data loaded successfully!', severity: 'success' });
       await fetchEmployees();
@@ -81,7 +81,7 @@ function App() {
 
   const handleAddEmployee = async (employeeData) => {
     console.log('Adding employee:', employeeData);
-    const response = await fetch('http://localhost:3001/api/employees', {
+    const response = await fetch('https://symplora-task.onrender.com/api/employees', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(employeeData),
@@ -98,7 +98,7 @@ function App() {
 
   const handleSubmitLeave = async (leaveData) => {
     console.log('Submitting leave request:', leaveData);
-    const response = await fetch('http://localhost:3001/api/leave-requests', {
+    const response = await fetch('https://symplora-task.onrender.com/api/leave-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(leaveData),
@@ -115,7 +115,7 @@ function App() {
   };
 
   const handleApproveReject = async (requestId, action) => {
-    const response = await fetch(`http://localhost:3001/api/leave-requests/${requestId}/status`, {
+    const response = await fetch(`https://symplora-task.onrender.com/api/leave-requests/${requestId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
