@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:prod": "vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "deploy:prod": "npm run build:prod && echo 'Production build ready for deployment'",
+    "deploy:dev": "npm run build:dev && echo 'Development build ready for deployment'"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",

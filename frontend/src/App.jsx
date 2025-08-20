@@ -16,6 +16,7 @@ import EmployeeManagement from './components/EmployeeManagement/EmployeeManageme
 import LeaveManagement from './components/LeaveManagement/LeaveManagement';
 import Analytics from './components/Analytics/Analytics';
 import { Sidebar, Header } from './components/Layout';
+import { config, buildApiUrl } from './config';
 
 // Navigation items
 const navigationItems = [
@@ -44,7 +45,7 @@ function App() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('https://symplora-task.onrender.com/api/employees');
+      const response = await fetch(buildApiUrl(config.api.employees));
       const data = await response.json();
       setEmployees(data.data || []);
     } catch (error) {
@@ -55,7 +56,7 @@ function App() {
 
   const fetchLeaveRequests = async () => {
     try {
-      const response = await fetch('https://symplora-task.onrender.com/api/leave-requests');
+      const response = await fetch(buildApiUrl(config.api.leaveRequests));
       const data = await response.json();
       setLeaveRequests(data.data || []);
     } catch (error) {
@@ -67,7 +68,7 @@ function App() {
   const handleLoadDemo = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://symplora-task.onrender.com/api/quick-setup');
+      const response = await fetch(buildApiUrl(config.api.quickSetup));
       const data = await response.json();
       setSnackbar({ open: true, message: 'Indian demo data loaded successfully!', severity: 'success' });
       await fetchEmployees();
@@ -81,7 +82,7 @@ function App() {
 
   const handleAddEmployee = async (employeeData) => {
     console.log('Adding employee:', employeeData);
-    const response = await fetch('https://symplora-task.onrender.com/api/employees', {
+    const response = await fetch(buildApiUrl(config.api.employees), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(employeeData),
@@ -98,7 +99,7 @@ function App() {
 
   const handleSubmitLeave = async (leaveData) => {
     console.log('Submitting leave request:', leaveData);
-    const response = await fetch('https://symplora-task.onrender.com/api/leave-requests', {
+    const response = await fetch(buildApiUrl(config.api.leaveRequests), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(leaveData),
@@ -115,7 +116,7 @@ function App() {
   };
 
   const handleApproveReject = async (requestId, action) => {
-    const response = await fetch(`https://symplora-task.onrender.com/api/leave-requests/${requestId}/status`, {
+    const response = await fetch(buildApiUrl(config.api.leaveRequests, requestId, 'status'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
