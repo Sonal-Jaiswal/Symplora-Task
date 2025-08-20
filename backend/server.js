@@ -17,6 +17,7 @@ const {
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
 const leaveRequestRoutes = require('./routes/leaveRequests');
+const healthRoutes = require('./routes/health');
 
 // Initialize PostgreSQL database
 require('./config/database-postgres');
@@ -89,6 +90,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/leave-requests', leaveRequestRoutes);
+app.use('/api/health', healthRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {

@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: symplora-postgres
+    environment:
+      POSTGRES_DB: symplora_dev
+      POSTGRES_USER: symplora_user
+      POSTGRES_PASSWORD: symplora_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/initDatabase.js:/docker-entrypoint-initdb.d/initDatabase.js
+    networks:
+      - symplora-network
+
+  # Redis for Caching (Future scaling)
+  redis:
+    image: redis:7-alpine
+    container_name: symplora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - symplora-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: symplora-backend
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://symplora_user:symplora_password@postgres:5432/symplora_dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev_jwt_secret
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - symplora-network
+    command: npm run dev
+
+  # Frontend Development Server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: symplora-frontend
+    environment:
+      VITE_API_URL: http://localhost:3001
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - symplora-network
+    command: npm run dev
+
+  # Nginx Load Balancer (Future scaling)
+  nginx:
+    image: nginx:alpine
+    container_name: symplora-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - symplora-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  symplora-network:
+    driver: bridge
